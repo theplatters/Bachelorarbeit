@@ -1,5 +1,7 @@
 module InterfaceHysteris
 
+    export OptimProb
+
     using ForwardDiff
 
     @Base.kwdef struct OptimProb
