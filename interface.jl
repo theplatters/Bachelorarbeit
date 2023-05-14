@@ -1,6 +1,6 @@
 module InterfaceHysteris
 
-    export RestrainedProblem,UnrestrainedProblem,TwoProblems
+    export RestrainedProblem,UnrestrainedProblem,TwoProblems,Interface
 
     using ForwardDiff
 
@@ -13,7 +13,7 @@ module InterfaceHysteris
     
         S::Function
     
-        u0::Vector{Float64}
+        x0::Vector{Float64}
     
         ∂S::Function
         ∂²S::Function
@@ -60,7 +60,7 @@ module InterfaceHysteris
     
         S::Function
     
-        m0::Vector{Float64}
+        x0::Vector{Float64}
     
         ∂U::Function
         ∂²U::Function
@@ -127,6 +127,16 @@ module InterfaceHysteris
         TwoProblems(res,unres)
     end
     
-    
+    mutable struct Interface
+        prob :: Union{RestrainedProblem,UnrestrainedProblem}
+        xk :: Vector{Float64}
+        err :: Float64
+    end
+
+    function Interface(prob)
+        xk = prob.x0
+        err = Inf64
+        Interface(prob,xk,err)
+    end
     
 end
