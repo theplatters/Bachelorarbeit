@@ -23,9 +23,13 @@ struct RestrainedProblem
     ∂S::Function
     ∂²S::Function
 
-    Sᵩ::Function
-    ∂Sᵩ::Function
-    ∂²Sᵩ::Function
+    obj::Function
+    ∇obj::Function
+    ∇²obj::Function
+
+    objᵩ::Function
+    ∇objᵩ::Function
+    ∇²objᵩ::Function
 
 end
 
@@ -45,10 +49,13 @@ function RestrainedProblem(χ, h, mₚ, S, u0; kwags...)
         hes = kwags[:hes]
     end
 
-    Sᵩ(ϕ, θ) = S(transformToEuklidean(ϕ, θ, χ, h))
-    ∂Sᵩ(ϕ, θ) = hes(transformToEuklidean(ϕ, θ, χ, h))' * J(χ, ϕ, θ)
-    ∂²Sᵩ(ϕ, θ) = ForwardDiff.hessian((x) -> Sᵩ(x...), [ϕ, θ])
-    RestrainedProblem(χ, h, mₚ, S, u0, jac, hes, Sᵩ, ∂Sᵩ, ∂²Sᵩ)
+    obj(u) = S - u ⋅ mₚ
+    ∇obj(u) = jac(u) - mp
+    ∇²obj = hes
+    objᵩ(ϕ, θ) = obj(transformToEuklidean(ϕ, θ, χ, h))
+    ∇objᵩ(ϕ, θ) = ∇obj(transformToEuklidean(ϕ, θ, χ, h))' * J(χ, ϕ, θ)
+    ∇²objᵩ(ϕ, θ) = ForwardDiff.hessian((x) -> objᵩ(x...), [ϕ, θ])
+    RestrainedProblem(χ, h, mₚ, S, u0, jac, hes, obj,∇obj,∇²obj,objᵩ,∇objᵩ,∇²objᵩ)
 end
 
 
@@ -127,9 +134,7 @@ end
 
 mutable struct Interface{T}
     prob::T
-    objectiveFunction::Function
-    ∇obj::Function
-    ∇²obj
+
     xk::Vector{Float64}
     err::Float64
 end
@@ -137,20 +142,16 @@ end
 function Interface(prob::RestrainedProblem)
     xk = prob.x0
     err = Inf64
-    objectiveFunction(u) = prob.S(u) - u ⋅ prob.mₚ
-    ∇obj(u) = prob.∂S(u) - prob.mₚ
-    ∇²obj = prob.∂²S
-    Interface(prob, objectiveFunction, ∇obj, ∇²obj, xk, err)
+
+    Interface(prob, xk, err)
 end
 
 
 function Interface(prob::UnrestrainedProblem)
     xk = prob.x0
     err = Inf64
-    objectiveFunction(u) = prob.U(u) - u ⋅ prob.h + prob.χ * norm(u - prob.mₚ)
-    ∇obj(u) = prob.∂U(u) - h + χ / norm(u - prob.mₚ) * (u - prob.mₚ)
-    ∇²obj(u) = prob.∂²U(u)
-    Interface(prob, objectiveFunction, ∇obj, ∇²obj, xk, err)
+
+    Interface(prob, xk, err)
 end
 
 

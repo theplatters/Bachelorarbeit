@@ -27,7 +27,7 @@ function newton(interface; maxiter=1000, tol=10^-10)
 
     for i in 1:maxiter
 
-        x = (interface.∇²obj(interface.xk) \ -interface.∇obj(interface.xk)) + interface.xk
+        x = (interface.prob.∇²obj(interface.xk) \ -interface.prob.∇obj(interface.xk)) + interface.xk
         interface.err = norm(x - interface.xk)
         interface.xk = x
 
