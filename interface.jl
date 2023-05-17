@@ -1,15 +1,12 @@
-module HysteresisInterface
 
-export RestrainedProblem, UnrestrainedProblem, TwoProblems, Interface, Solution
 
-using ForwardDiff
+using ForwardDiff, LinearAlgebra
 
 J(r, ϕ, θ) =
     [[sin(θ) * cos(ϕ), r * cos(θ) * cos(ϕ), -r * sin(θ) * sin(ϕ)],
         [sin(θ) * sin(ϕ), r * cos(θ) * sin(ϕ), r * sin(θ) * cos(ϕ)],
         [cos(θ), -r * sin(θ), 0]]
 
-transformToEuklidean(ϕ, θ, r, h) = h + [r * sin(θ) * cos(ϕ), r * sin(θ) * sin(ϕ), r * cos(θ)]
 
 struct RestrainedProblem
     χ::Float64
@@ -18,8 +15,6 @@ struct RestrainedProblem
 
     S::Function
 
-    x0::Vector{Float64}
-
     ∂S::Function
     ∂²S::Function
 
@@ -27,14 +22,14 @@ struct RestrainedProblem
     ∇obj::Function
     ∇²obj::Function
 
-    objᵩ::Function
-    ∇objᵩ::Function
-    ∇²objᵩ::Function
+    objOnBall::Function
+    ∇objOnBall::Function
+    ∇²objOnBall::Function
 
 end
 
 
-function RestrainedProblem(χ, h, mₚ, S, u0; kwags...)
+function RestrainedProblem(χ, h, mₚ, S; kwags...)
 
 
     if !haskey(kwags, :jac)
@@ -49,13 +44,15 @@ function RestrainedProblem(χ, h, mₚ, S, u0; kwags...)
         hes = kwags[:hes]
     end
 
-    obj(u) = S - u ⋅ mₚ
-    ∇obj(u) = jac(u) - mp
+    transformToEuklidean(ϕ, θ, r, h) = h + [r * sin(θ) * cos(ϕ), r * sin(θ) * sin(ϕ), r * cos(θ)]
+
+    obj(u) = S(u) - u ⋅ mₚ
+    ∇obj(u) = jac(u) - mₚ
     ∇²obj = hes
-    objᵩ(ϕ, θ) = obj(transformToEuklidean(ϕ, θ, χ, h))
-    ∇objᵩ(ϕ, θ) = ∇obj(transformToEuklidean(ϕ, θ, χ, h))' * J(χ, ϕ, θ)
-    ∇²objᵩ(ϕ, θ) = ForwardDiff.hessian((x) -> objᵩ(x...), [ϕ, θ])
-    RestrainedProblem(χ, h, mₚ, S, u0, jac, hes, obj,∇obj,∇²obj,objᵩ,∇objᵩ,∇²objᵩ)
+    objᵩ(x) = obj(transformToEuklidean(x..., χ, h))
+    ∇objᵩ(x) = ForwardDiff.gradient(objᵩ, x)
+    ∇²objᵩ(x) = ForwardDiff.hessian(objᵩ, x)
+    RestrainedProblem(χ, h, mₚ, S, jac, hes, obj, ∇obj, ∇²obj, objᵩ, ∇objᵩ, ∇²objᵩ)
 end
 
 
@@ -66,92 +63,64 @@ struct UnrestrainedProblem
 
     S::Function
 
-    x0::Vector{Float64}
 
     ∂U::Function
     ∂²U::Function
 
-    hasObjectiveGradient::Bool
-    hasObjectiveHessian::Bool
+    obj::Function
+    ∇obj::Function
+    ∇²obj::Function
 
 end
 
-function UnrestrainedProblem(χ, h, mₚ, U, u0; kwags...)
+function UnrestrainedProblem(χ, h, mₚ, U; kwags...)
     println(kwags)
 
     if :jac ∉ keys(kwags)
         jac(x) = ForwardDiff.gradient(U, x)
-        hes(x) = ForwardDiff.hessian(U, x)
-        return UnrestrainedProblem(χ, h, mₚ, U, u0, jac, hes, false, false)
+    else
+        jac = kwags[:jac]
     end
-
-
-    jac = kwags[:jac]
 
 
     if :hes ∉ keys(kwags)
         hes(x) = ForwardDiff.hessian(U, x)
-        return UnrestrainedProblem(χ, h, mₚ, U, u0, jac, hes, true, false)
-    end
-
-    Hessian = kwags[:hes]
-
-    UnrestrainedProblem(χ, h, mₚ, U, u0, jac, Hessian, true, true)
-
-    Hessian = kwags[:hes]
-
-    UnrestrainedProblem(χ, h, mₚ, U, u0, jac, Hessian, true, true)
-end
-
-struct TwoProblems
-    Restrained::RestrainedProblem
-    Unrestrained::UnrestrainedProblem
-end
-
-
-
-function TwoProblems(χ, h, mₚ, m0; S, U, kwargs...)
-    u0 = m0
-
-    if :∂S ∉ keys(kwargs)
-        res = RestrainedProblem(χ, h, mₚ, S, u0)
-    elseif :∂²S ∉ keys(kwargs)
-        res = RestrainedProblem(χ, h, mₚ, S, u0, kwargs[:∂S])
     else
-        res = RestrainedProblem(χ, h, mₚ, S, u0, kwargs[:∂S], kwargs[:∂²S])
+        hes = kwags[:hes]
     end
 
-    if :∂U ∉ keys(kwargs)
-        unres = UnrestrainedProblem(χ, h, mₚ, U, u0)
-    elseif :∂²U ∉ keys(kwargs)
-        unres = UnrestrainedProblem(χ, h, mₚ, S, u0, kwargs[:∂U])
-    else
-        unres = UnrestrainedProblem(χ, h, mₚ, S, u0, kwargs[:∂U], kwargs[:∂²U])
-    end
+    obj(m) = U(m) - h ⋅ m + χ*norm(m - mₚ)
+    ∇obj(m) = ForwardDiff.gradient(obj,m)
+    ∇²obj(m) = ForwardDiff.hessian(obj,m)
 
-    TwoProblems(res, unres)
+
+
+    UnrestrainedProblem(χ, h, mₚ, U, jac, hes,obj,∇obj,∇²obj)
+
+
 end
+
 
 mutable struct Interface{T}
     prob::T
-
+    x0::Vector{Float64}
     xk::Vector{Float64}
     err::Float64
 end
 
-function Interface(prob::RestrainedProblem)
-    xk = prob.x0
+function Interface(prob::RestrainedProblem, x0)
+    xk = x0
     err = Inf64
 
-    Interface(prob, xk, err)
+    Interface(prob, x0, xk, err)
 end
 
 
-function Interface(prob::UnrestrainedProblem)
-    xk = prob.x0
+function Interface(prob::UnrestrainedProblem,x0)
+    xk = x0
     err = Inf64
 
-    Interface(prob, xk, err)
+    Interface(prob, x0, xk, err)
 end
 
 
@@ -163,4 +132,3 @@ struct Solution
 end
 
 
-end
