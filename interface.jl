@@ -61,7 +61,7 @@ struct UnrestrainedProblem
     h::Vector{Float64}
     mₚ::Vector{Float64}
 
-    S::Function
+    U::Function
 
 
     ∂U::Function
@@ -96,7 +96,7 @@ function UnrestrainedProblem(χ, h, mₚ, U; kwags...)
     ∇diffPart(m) = jac(m) - h
 
     obj(m) = U(m) - h ⋅ m + χ*norm(m - mₚ)
-    ∇obj(m) = ForwardDiff.gradient(obj,m)
+    ∇obj(m) = ForwardDiff.gradient(U,m) - h + χ/norm(m - mₚ) * (m - mₚ)
     ∇²obj(m) = ForwardDiff.hessian(obj,m)
 
 
