@@ -25,9 +25,8 @@ end
 function newton(g, H, x0; maxiter=1000, tol=1.e-10)
     xk = x0
     for i in 1:maxiter
-        x = (H(xk) \ -g(xk)) + xk
-        err = norm(x - xk)
-        xk = x
+        xk = (H(xk) \ -g(xk)) + xk
+        err = norm(g(xk))
 
         if (err < tol)
             return xk, err, true
@@ -58,20 +57,55 @@ function proxOfNorm(x, λ, mp)
 end
 
 function proxGrad(intf; maxiter=1000, tol=1.e-10)
-    Lk = 5.916070
+    s = 0.01
+    η = 1.1
+    Lk = s
     err = 0.0
+    f(xk) = intf.prob.U(xk) - xk ⋅ intf.prob.h
+    ∂f(xk) = intf.prob.∂U(xk) - intf.prob.h
+    T(∂f,Lk,xk) = proxOfNorm((xk .- 1 / Lk * ∂f(xk)), 1 / Lk * intf.prob.χ, intf.prob.mₚ)
+    
     for i ∈ 1:maxiter
-        x = proxOfNorm((intf.xk .- 1 / Lk * intf.prob.∂U(intf.xk)), 1 / Lk * intf.prob.χ, intf.prob.mₚ)
-        println("Iteration : $i, xk = $(intf.xk)")
-        err = norm(intf.xk - x)
-        if (err ≤ tol)
-            return Solution(intf.prob, x, err, true)
+        while f(T(∂f,Lk,intf.xk)) > f(intf.xk) + dot(∂f(intf.xk),(T(f,Lk,intf.xk) - intf.xk)) + Lk/2 * norm(T(f,Lk,intf.xk) - intf.xk)^2
+            Lk = Lk * η
+            println("adjusting stepsize")
         end
-        intf.xk = x
+
+        intf.xk = T(∂f,Lk,intf.xk)         
+       
+        println("Iteration $i: Stepsize $Lk, step $(intf.xk)")
+        if intf.xk ≈ intf.prob.mₚ
+            if norm(∂f(xk)) ≤ χ
+                return Solution(intf.prob, intf.xk, err, true)
+            end
+        else
+            err = norm(intf.prob.∇obj(intf.xk))
+            if (err ≤ tol)
+                return Solution(intf.prob, intf.xk, err, true)
+            end
+        end
     end
     return Solution(intf.prob, intf.xk, err, false)
 end
 
-function quasiNewton(inft; maxiter=1000, tol=1.e-10)
-    
+function quasiNewton(intf; maxiter=1000, tol=1.e-10)
+  
+    for i ∈ 1:maxiter
+        if intf.xk ≈ intf.prob.mₚ
+            if ∂U(xk) + intf.prob.hᵣ ≤ χ
+                return Solution(intf.prob,intf.xk,0,true)
+            else
+                intf.xk = intf.xk + \
+
+            end
+        else
+            intf.xk = (intf.prob.∇²obj(intf.xk) \ -intf.prob.∇obj(intf.xk)) + intf.xk
+            err = norm(g(xk))
+
+            if (err < tol)
+                return xk, err, true
+            end
+        end
+
+    end
 end
