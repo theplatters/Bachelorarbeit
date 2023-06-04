@@ -67,11 +67,9 @@ function proxGrad(intf; maxiter=1000, tol=1.e-10)
     for i ∈ 1:maxiter
         while f(T(∂f,Lk,intf.xk)) > f(intf.xk) + dot(∂f(intf.xk),(T(∂f,Lk,intf.xk) - intf.xk)) + Lk/2 * norm(T(∂f,Lk,intf.xk) - intf.xk)^2
            Lk = Lk * η
-            println("adjusting stepsize")
         end
         intf.xk = T(∂f,Lk,intf.xk)         
        
-        println("Iteration $i: Stepsize $Lk, step $(intf.xk)")
         if intf.xk ≈ intf.prob.mₚ
             if norm(∂f(intf.xk)) ≤ intf.prob.χ
                 return Solution(intf.prob, intf.xk, err, true)
