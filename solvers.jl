@@ -53,7 +53,7 @@ function proxOfNorm(x, λ, mp)
 end
 
 function proxGrad(intf; maxiter=1000, tol=1.e-10)
-    Lk = 1.0 / maxiter
+    Lk = 5.916070
     err = 0.0
     for i ∈ 1:maxiter
         x = proxOfNorm((intf.xk .- 1 / Lk * intf.prob.∂U(intf.xk)), 1 / Lk * intf.prob.χ, intf.prob.mₚ)
