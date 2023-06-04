@@ -67,6 +67,9 @@ struct UnrestrainedProblem
     ∂U::Function
     ∂²U::Function
 
+    diffPart::Function
+    ∇diffPart::Function
+
     obj::Function
     ∇obj::Function
     ∇²obj::Function
@@ -89,13 +92,16 @@ function UnrestrainedProblem(χ, h, mₚ, U; kwags...)
         hes = kwags[:hes]
     end
 
+    diffPart(m) = U(m) - h ⋅ m 
+    ∇diffPart(m) = jac(m) - h
+
     obj(m) = U(m) - h ⋅ m + χ*norm(m - mₚ)
     ∇obj(m) = ForwardDiff.gradient(obj,m)
     ∇²obj(m) = ForwardDiff.hessian(obj,m)
 
 
 
-    UnrestrainedProblem(χ, h, mₚ, U, jac, hes,obj,∇obj,∇²obj)
+    UnrestrainedProblem(χ, h, mₚ, U, jac, hes,diffPart,∇diffPart,obj,∇obj,∇²obj)
 
 
 end

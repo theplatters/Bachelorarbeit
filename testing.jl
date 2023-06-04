@@ -20,9 +20,15 @@ uprob = UnrestrainedProblem(χ,h,mₚ,U);
 intf1 = Interface(uprob, x0);
 inftf2 = Interface(prob,x0);
 
+uprob.∂U(x0) - h
+
+uprob.∇diffPart(x0)
+
 sol1 = solve(intf1,maxiter=100, tol=10^-10);
 
 sol2 = solve(inftf2,maxiter = 100)
+
+eigen(A).values
 
 sol1.xk
 sol2.xk
