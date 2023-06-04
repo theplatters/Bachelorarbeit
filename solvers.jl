@@ -6,6 +6,8 @@ using LinearAlgebra
 
 transformToEuklidean(ϕ, θ, r, h) = h + [r * sin(θ) * cos(ϕ), r * sin(θ) * sin(ϕ), r * cos(θ)]
 
+transformToRadial(x, m) = [atan(x[2] - m[2],x[1]-m[1]),acos((x[3] - m[3])/ norm(x-m))]
+
 @enum Algorithms begin
     DEFAULT
     NEWTON
@@ -39,10 +41,13 @@ end
 
 function newton(interface; maxiter=1000, tol=1.e-10)
     xk, err, conv = newton(interface.prob.∇obj, interface.prob.∇²obj, interface.x0, maxiter=maxiter, tol=tol)
-    if (norm(xk - interface.prob.h) ≤ interface.prob.χ)
+    if (norm(xk - interface.prob.h) ≤ interface.prob.χ) #Check if point is on Sphere
         return Solution(interface.prob, xk, err, conv)
     else
-        xk, err, conv = newton(interface.prob.∇objOnBall, interface.prob.∇²objOnBall, [0.0, 0.0], maxiter=maxiter, tol=tol)
+        xk_centered = xk - interface.prob.h 
+        x0_euk = (interface.prob.χ / norm(xk_centered) * xk_centered) + interface.prob.h #Project solution onto sphere
+        x0 = transformToRadial(x0_euk, interface.prob.h) #transform to radial coordinates
+        xk, err, conv = newton(interface.prob.∇objOnBall, interface.prob.∇²objOnBall,x0 , maxiter=maxiter, tol=tol)
         xk_euk = transformToEuklidean(xk..., interface.prob.χ, interface.prob.h)
         return Solution(interface.prob, xk_euk, err, conv)
     end
@@ -67,3 +72,6 @@ function proxGrad(intf; maxiter=1000, tol=1.e-10)
     return Solution(intf.prob, intf.xk, err, false)
 end
 
+function quasiNewton(inft; maxiter=1000, tol=1.e-10)
+    
+end
