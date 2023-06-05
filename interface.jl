@@ -96,8 +96,8 @@ function UnrestrainedProblem(χ, h, mₚ, U; kwags...)
     ∇diffPart(m) = jac(m) - h
 
     obj(m) = U(m) - h ⋅ m + χ*norm(m - mₚ)
-    ∇obj(m) = ForwardDiff.gradient(U,m) - h + χ/norm(m - mₚ) * (m - mₚ)
-    ∇²obj(m) = ForwardDiff.hessian(obj,m)
+    ∇obj(m) = jac(m) - h + χ/norm(m - mₚ) * (m - mₚ)
+    ∇²obj(m) = hes(m) + χ * (1/norm(m - mₚ) * I - 1/norm(m - mₚ)^3 * (m - mₚ) * (m - mₚ)')
 
 
 
