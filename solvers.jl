@@ -28,26 +28,26 @@ function newton(g, H, x0; maxiter=1000, tol=1.e-10)
         err = norm(g(xk))
 
         if (err < tol)
-            return xk, err, true
+            return xk, err, true, i
         end
 
     end
     print("Reached MaxIter, solution is maybe not convergent")
-    return xk, err, false
+    return xk, err, false, maxiter
 end
 
 
 function newton(interface; maxiter=1000, tol=1.e-10)
-    xk, err, conv = newton(interface.prob.∇obj, interface.prob.∇²obj, interface.x0, maxiter=maxiter, tol=tol)
+    xk, err, conv, iter = newton(interface.prob.∇obj, interface.prob.∇²obj, interface.x0, maxiter=maxiter, tol=tol)
     if (norm(xk - interface.prob.h) ≤ interface.prob.χ) #Check if point is on Sphere
-        return Solution(interface.prob, xk, err, conv)
+        return Solution(interface.prob, xk, err, conv, iter)
     else
         xk_centered = xk - interface.prob.h
         x0_euk = (interface.prob.χ / norm(xk_centered) * xk_centered) + interface.prob.h #Project solution onto sphere
         x0 = transformToRadial(x0_euk, interface.prob.h) #transform to radial coordinates
-        xk, err, conv = newton(interface.prob.∇objOnBall, interface.prob.∇²objOnBall, x0, maxiter=maxiter, tol=tol)
+        xk, err, conv, iter = newton(interface.prob.∇objOnBall, interface.prob.∇²objOnBall, x0, maxiter=maxiter, tol=tol)
         xk_euk = transformToEuklidean(xk..., interface.prob.χ, interface.prob.h)
-        return Solution(interface.prob, xk_euk, err, conv)
+        return Solution(interface.prob, xk_euk, err, conv, iter)
     end
 end
 
@@ -72,16 +72,17 @@ function proxGrad(intf; maxiter=1000, tol=1.e-10)
 
         if intf.xk ≈ intf.prob.mₚ
             if norm(∂f(intf.xk)) ≤ intf.prob.χ
-                return Solution(intf.prob, intf.xk, err, true)
+                err = norm(intf.xk - intf.prob.mₚ)
+                return Solution(intf.prob, intf.xk, err, true, i)
             end
         else
             err = norm(intf.prob.∇obj(intf.xk))
             if (err ≤ tol)
-                return Solution(intf.prob, intf.xk, err, true)
+                return Solution(intf.prob, intf.xk, err, true, i)
             end
         end
     end
-    return Solution(intf.prob, intf.xk, err, false)
+    return Solution(intf.prob, intf.xk, err, false, maxiter)
 end
 
 function quasiNewton(intf; maxiter=1000, tol=1.e-10)
@@ -91,7 +92,7 @@ function quasiNewton(intf; maxiter=1000, tol=1.e-10)
 
             println(norm(intf.xk - intf.prob.mₚ))
             if intf.∂U(xk) + intf.prob.hᵣ ≤ χ
-                return Solution(intf.prob, intf.xk, 0, true)
+                return Solution(intf.prob, intf.xk, 0, true, i)
             else
                 intf.xk = intf.xk + χ / norm(intf.xk) * intf.xk
 
@@ -101,7 +102,7 @@ function quasiNewton(intf; maxiter=1000, tol=1.e-10)
             err = norm(intf.prob.∇obj(intf.xk))
 
             if (err < tol)
-                return Solution(intf.prob, intf.xk, err, true)
+                return Solution(intf.prob, intf.xk, err, true, i)
             end
         end
 

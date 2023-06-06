@@ -77,7 +77,6 @@ struct UnrestrainedProblem
 end
 
 function UnrestrainedProblem(χ, h, mₚ, U; kwags...)
-    println(kwags)
 
     if :jac ∉ keys(kwags)
         jac(x) = ForwardDiff.gradient(U, x)
@@ -135,6 +134,7 @@ struct Solution
     xk::Vector{Float64}
     err::Float64
     convergent::Bool
+    iter :: Int64
 end
 
 
